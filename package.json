@@ -1,0 +1,15 @@
+{
+  "name": "comprehension-debt",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cli": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
