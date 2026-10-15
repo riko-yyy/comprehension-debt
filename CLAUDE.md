@@ -5,7 +5,7 @@ git 履歴と PR レビューから、ファイル／ディレクトリ単位の
 
 ## コマンド
 
-- 実行: `npm run cli -- <サブコマンド>`（例: `npm run cli -- score ../design-doc-repo`）
+- 実行: `npm run cli -- <サブコマンド>`（例: `npm run cli -- score ../design-doc-repo`、`lines` は由来別の変更行数）
 - 型チェック: `npm run typecheck`（tsx は型チェックしないので、変更後は必ず実行する）
 
 ## 進め方
