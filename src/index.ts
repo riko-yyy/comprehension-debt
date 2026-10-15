@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { classify, type Origin } from "./classify.js";
 import { listFiles, readCommits } from "./git-log.js";
+import { CONFIG_FILE, createIgnore, DEFAULT_IGNORE, loadConfig } from "./ignore.js";
 import { DEFAULT_PARAMS, scoreFiles, type ScoreParams } from "./score.js";
 import { aggregate, fileHistories } from "./stats.js";
 
@@ -13,6 +14,12 @@ const USAGE = `usage:
 options (score):
   --lambda <n>   AI の変更が理解を下げる強さ（既定 ${DEFAULT_PARAMS.lambda}）
   --pair <n>     併走の変更を自律の何倍で効かせるか、0〜1（既定 ${DEFAULT_PARAMS.pairWeight}）`;
+
+// `| head` のように読み手が途中で閉じたら、エラーにせず静かに終わる
+process.stdout.on("error", (e: NodeJS.ErrnoException) => {
+  if (e.code === "EPIPE") process.exit(0);
+  throw e;
+});
 
 // process.argv = [node, script, ...実際の引数]
 const [command, ...args] = process.argv.slice(2);
@@ -93,9 +100,24 @@ function load(repoPath: string) {
   const commits = readCommits(repoPath);
   const count = (origin: Origin) => commits.filter((c) => classify(c).origin === origin).length;
   console.log(
-    `commits: ${commits.length}（自律 ${count("autonomous")} / 併走 ${count("pair")} / 人間 ${count("human")}、マージコミットを除く）\n`,
+    `commits: ${commits.length}（自律 ${count("autonomous")} / 併走 ${count("pair")} / 人間 ${count("human")}、マージコミットを除く）`,
   );
-  return fileHistories(commits, listFiles(repoPath));
+
+  // 既定の除外のあとに understanding.yml の ignore: を並べるので、"!" で既定を取り消せる
+  const config = loadConfigOrFail(repoPath);
+  const isIgnored = createIgnore([...DEFAULT_IGNORE, ...config.ignore]);
+  const files = [...listFiles(repoPath)];
+  const kept = files.filter((f) => !isIgnored(f));
+  console.log(`除外: ${files.length - kept.length} ファイル（既定のパターン + ${CONFIG_FILE} の ignore:）\n`);
+  return fileHistories(commits, new Set(kept));
+}
+
+function loadConfigOrFail(repoPath: string) {
+  try {
+    return loadConfig(repoPath);
+  } catch (e) {
+    fail(e instanceof Error ? e.message : String(e));
+  }
 }
 
 // 最後の列（path）以外を右寄せにして表を出す
