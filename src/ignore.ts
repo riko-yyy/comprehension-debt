@@ -29,6 +29,8 @@ export const DEFAULT_IGNORE = [
   "*ModelSnapshot.cs",
   // 画像（ほかの形式はバイナリなので、もともと集計されない）
   "*.svg",
+  // このツール自身の記録（ADR 0009）
+  "/.understanding/",
 ];
 
 export const CONFIG_FILE = "understanding.yml";
@@ -56,10 +58,11 @@ export function createIgnore(patterns: string[]): (path: string) => boolean {
   const rules = patterns.map((pattern) => {
     const negate = pattern.startsWith("!");
     let glob = negate ? pattern.slice(1) : pattern;
-    // "dist/" のように "/" で終わるものは、その名前のディレクトリの中身すべて
-    if (glob.endsWith("/")) glob = `**/${glob}**`;
     // "/docs/*.md" のように先頭の "/" はリポジトリのルートからという意味。パスは "/" で始まらないので外す
-    if (glob.startsWith("/")) glob = glob.slice(1);
+    const anchored = glob.startsWith("/");
+    if (anchored) glob = glob.slice(1);
+    // "dist/" のように "/" で終わるものは、その名前のディレクトリの中身すべて（"/dist/" ならルートの dist だけ）
+    if (glob.endsWith("/")) glob = anchored ? `${glob}**` : `**/${glob}**`;
     // picomatch の basename オプションは "/" を含むパターンにも効いてしまうので、ここで分ける
     const basename = !pattern.includes("/");
     return { negate, match: picomatch(glob, { basename, dot: true }) };

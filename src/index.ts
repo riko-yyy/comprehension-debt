@@ -1,5 +1,7 @@
 import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
+import { ACKS_FILE, appendAcks, normalizeAckPath, readAcks, type Ack } from "./acks.js";
 import { classify, type Origin } from "./classify.js";
 import { listFiles, readCommits } from "./git-log.js";
 import { CONFIG_FILE, createIgnore, DEFAULT_IGNORE, loadConfig } from "./ignore.js";
@@ -10,6 +12,7 @@ const USAGE = `usage:
   npm run cli -- hello
   npm run cli -- lines <repo-path>                 由来別の変更行数（Phase 1）
   npm run cli -- score <repo-path> [options]       理解スコアの低い順（Phase 2）
+  npm run cli -- ack <repo-path> <path>...         読んで理解したファイル／ディレクトリを記録する
 
 options (score):
   --lambda <n>   AI の変更が理解を下げる強さ（既定 ${DEFAULT_PARAMS.lambda}）
@@ -44,21 +47,45 @@ switch (command) {
   case "score": {
     const { repoPath, params } = parseArgs(args);
     const histories = load(repoPath);
+    const acks = orFail(() => readAcks(repoPath));
+    console.log(`acks: ${acks.length} 件（${ACKS_FILE}）`);
     console.log(`params: lambda=${params.lambda} pair=${params.pairWeight}\n`);
-    const scores = scoreFiles(histories, params);
+    const scores = scoreFiles(histories, acks, params);
     scores.sort((a, b) => a.score - b.score || b.size - a.size);
     printTable(
-      ["score", "行数", "自律", "併走", "人間", "最後に人間", "path"],
+      ["score", "行数", "自律", "併走", "人間", "最後の理解", "path"],
       scores.map((r) => [
         r.score.toFixed(2),
         String(r.size),
         String(r.lines.autonomous),
         String(r.lines.pair),
         String(r.lines.human),
-        r.lastHumanDate?.slice(0, 10) ?? "-",
+        r.lastUnderstoodDate?.slice(0, 10) ?? "-",
         r.path,
       ]),
     );
+    break;
+  }
+
+  case "ack": {
+    const [target, ...rawPaths] = args;
+    const repoPath = repoPathOrFail(target);
+    if (rawPaths.length === 0) fail("理解したファイルかディレクトリのパスが必要です");
+
+    // 打ち間違いを防ぐため、HEAD にあるファイルか、それを含むディレクトリだけを受け付ける
+    const files = [...listFiles(repoPath)];
+    const paths = rawPaths.map(normalizeAckPath);
+    for (const [i, path] of paths.entries()) {
+      const exists = path === "" || files.some((f) => f === path || f.startsWith(path + "/"));
+      if (!exists) fail(`リポジトリにないパスです: ${rawPaths[i]}`);
+    }
+
+    const by = gitUserName(repoPath);
+    const date = localIsoString(new Date());
+    const acks: Ack[] = paths.map((path) => ({ path, date, by }));
+    appendAcks(repoPath, acks);
+    for (const a of acks) console.log(`ack: ${a.path || "(リポジトリ全体)"}`);
+    console.log(`\n${ACKS_FILE} に ${acks.length} 件追記しました（by ${by}）。対象リポジトリでコミットしてください`);
     break;
   }
 
@@ -84,10 +111,33 @@ function parseArgs(args: string[]): { repoPath: string; params: ScoreParams } {
       target = arg;
     }
   }
+  return { repoPath: repoPathOrFail(target), params };
+}
+
+function repoPathOrFail(target: string | undefined): string {
   if (!target) fail("リポジトリのパスが必要です");
   const repoPath = resolve(target);
   if (!existsSync(resolve(repoPath, ".git"))) fail(`git リポジトリではありません: ${repoPath}`);
-  return { repoPath, params };
+  return repoPath;
+}
+
+// git log の %aI と同じ、タイムゾーン付きのローカル時刻（2026-10-15T22:10:00+09:00）
+function localIsoString(d: Date): string {
+  const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, "0");
+  const offset = -d.getTimezoneOffset();
+  const tz = `${offset >= 0 ? "+" : "-"}${pad(offset / 60)}:${pad(offset % 60)}`;
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${tz}`
+  );
+}
+
+function gitUserName(repoPath: string): string {
+  try {
+    return execFileSync("git", ["-C", repoPath, "config", "user.name"], { encoding: "utf8" }).trim();
+  } catch {
+    fail("git の user.name が設定されていません（git config user.name で設定してください）");
+  }
 }
 
 function fail(message: string): never {
@@ -104,7 +154,7 @@ function load(repoPath: string) {
   );
 
   // 既定の除外のあとに understanding.yml の ignore: を並べるので、"!" で既定を取り消せる
-  const config = loadConfigOrFail(repoPath);
+  const config = orFail(() => loadConfig(repoPath));
   const isIgnored = createIgnore([...DEFAULT_IGNORE, ...config.ignore]);
   const files = [...listFiles(repoPath)];
   const kept = files.filter((f) => !isIgnored(f));
@@ -112,9 +162,10 @@ function load(repoPath: string) {
   return fileHistories(commits, new Set(kept));
 }
 
-function loadConfigOrFail(repoPath: string) {
+// 設定ファイルなどの読み込みエラーを、使い方つきのエラー表示にする
+function orFail<T>(read: () => T): T {
   try {
-    return loadConfig(repoPath);
+    return read();
   } catch (e) {
     fail(e instanceof Error ? e.message : String(e));
   }
