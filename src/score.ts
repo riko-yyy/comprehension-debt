@@ -1,3 +1,4 @@
+import { ackCovers, type Ack } from "./acks.js";
 import type { Origin } from "./classify.js";
 import type { Change } from "./stats.js";
 
@@ -18,22 +19,35 @@ export type FileScore = {
   size: number;
   lines: Record<Origin, number>;
   commits: number;
-  lastHumanDate?: string;
+  // 最後に理解した日時。人間の変更か ack の新しいほう
+  lastUnderstoodDate?: string;
   lastDate: string;
 };
 
 // 履歴を古い順に再生して、理解度を更新していく（ADR 0007）
 //   人間の変更: 変更した割合だけ、理解していない部分を埋める
 //   AI の変更:  変更した割合に応じて、理解度を指数的に下げる
-export function scoreFile(path: string, changes: Change[], params: ScoreParams): FileScore {
+//   ack:        ファイル全体を読んだという申告なので、満点に戻す（ADR 0009）
+// acks はこのファイルに当てはまるものを渡す
+export function scoreFile(path: string, changes: Change[], acks: Ack[], params: ScoreParams): FileScore {
   const weight: Record<Origin, number> = { human: 0, pair: params.pairWeight, autonomous: 1 };
   const lines: Record<Origin, number> = { human: 0, pair: 0, autonomous: 0 };
   // まだ存在しないファイルは、理解すべきものがないので 1 から始める
   let understood = 1;
   let size = 0;
-  let lastHumanDate: string | undefined;
+  let lastUnderstoodDate: string | undefined;
+
+  // ack を日時の順に、その日時より後の変更の手前で差し込む
+  const pending = [...acks].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  const applyAcksBefore = (date: number) => {
+    while (pending.length > 0 && Date.parse(pending[0].date) <= date) {
+      understood = 1;
+      lastUnderstoodDate = pending.shift()!.date;
+    }
+  };
 
   for (const c of changes) {
+    applyAcksBefore(Date.parse(c.date) - 1);
     const touched = c.added + c.deleted;
     const before = size;
     size = Math.max(0, size + c.added - c.deleted);
@@ -42,12 +56,13 @@ export function scoreFile(path: string, changes: Change[], params: ScoreParams):
 
     if (c.origin === "human") {
       understood += (1 - understood) * Math.min(1, ratio);
-      lastHumanDate = c.date;
+      lastUnderstoodDate = c.date;
     } else {
       understood *= Math.exp(-params.lambda * weight[c.origin] * ratio);
     }
     lines[c.origin] += touched;
   }
+  applyAcksBefore(Infinity);
 
   return {
     path,
@@ -55,11 +70,13 @@ export function scoreFile(path: string, changes: Change[], params: ScoreParams):
     size,
     lines,
     commits: changes.length,
-    lastHumanDate,
+    lastUnderstoodDate,
     lastDate: changes.at(-1)?.date ?? "",
   };
 }
 
-export function scoreFiles(histories: Map<string, Change[]>, params: ScoreParams): FileScore[] {
-  return [...histories].map(([path, changes]) => scoreFile(path, changes, params));
+export function scoreFiles(histories: Map<string, Change[]>, acks: Ack[], params: ScoreParams): FileScore[] {
+  return [...histories].map(([path, changes]) =>
+    scoreFile(path, changes, acks.filter((a) => ackCovers(a, path)), params),
+  );
 }
