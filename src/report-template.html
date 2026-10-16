@@ -167,7 +167,7 @@ function select(path) {
     }
     const hint = document.createElement("p");
     hint.className = "meta";
-    hint.innerHTML = "差分を見る（explainer に渡す材料）: <code></code>";
+    hint.innerHTML = "差分を見る: <code></code>";
     // git show は複数のコミットを受け付けるので、古い順に全部並べる
     hint.querySelector("code").textContent = `git show ${changes.map((c) => c.commit.slice(0, 7)).join(" ")} -- ${f.path}`;
     detail.append(table, hint);

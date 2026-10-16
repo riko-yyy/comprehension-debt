@@ -21,7 +21,7 @@ export type ReportFile = {
   recentChanges: number;
   lines: Record<Origin, number>;
   lastUnderstoodDate: string | null;
-  // explainer に渡す材料（ADR 0010）。git show <commit> -- <path> で差分を取り出せる
+  // 理解するための材料（ADR 0013）。git show <commit> -- <path> で差分を取り出せる
   changesSinceUnderstood: { commit: string; date: string; origin: Origin; added: number; deleted: number }[];
 };
 

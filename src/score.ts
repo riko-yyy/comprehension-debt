@@ -21,7 +21,7 @@ export type FileScore = {
   commits: number;
   // 最後に理解した日時。人間の変更か ack の新しいほう
   lastUnderstoodDate?: string;
-  // 最後に理解した時点より後の変更（一度も理解していなければ全部）。explainer に渡す材料（ADR 0010）
+  // 最後に理解した時点より後の変更（一度も理解していなければ全部）。理解するための材料（ADR 0013）
   changesSinceUnderstood: Change[];
   lastDate: string;
 };
