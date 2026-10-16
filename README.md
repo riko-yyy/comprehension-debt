@@ -131,6 +131,15 @@ lock ファイル、`*.min.js` などの自動生成ファイル、`*.svg` は�
 npm run screenshots   # docs/images/report-{light,dark}.png（Chrome を画面なしで動かして撮る）
 ```
 
+## このプロジェクトについて
+
+作者が自分のリポジトリで試しながら作っている、個人の実験的なプロジェクトです。
+スコアの式や出力の形は、使いながら変えていきます（変えたときは [ADR](docs/adr/) に残します）。
+
+- Issue（使ってみた感想、バグ、アイデア）は歓迎します。ただし、対応や返信は約束できません
+- Pull Request は、先に Issue で相談してもらえると助かります
+- このリポジトリ自体も、AI（Claude Code）と一緒に作っています。進め方は [CLAUDE.md](CLAUDE.md)、決めたことは [docs/adr/](docs/adr/) にあります
+
 ## ライセンス
 
 [MIT](LICENSE)
@@ -140,4 +149,4 @@ npm run screenshots   # docs/images/report-{light,dark}.png（Chrome を画面�
 - [docs/vision.md](docs/vision.md) — 最終的に目指す方向
 - [docs/plan.md](docs/plan.md) — 段階1の計画
 - [docs/adr/](docs/adr/) — これまでの意思決定
-- [CLAUDE.md](CLAUDE.md) — Claude Code と一緒に進めるときのルール
+- [CLAUDE.md](CLAUDE.md) — Claude Code と一緒に進めるときのルール（AI に任せる範囲と、人間が確認するところ）
