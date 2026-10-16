@@ -4,17 +4,19 @@ import { resolve } from "node:path";
 import { ACKS_FILE, appendAcks, normalizeAckPath, readAcks, type Ack } from "./acks.js";
 import { classify, type Origin } from "./classify.js";
 import { listFiles, readCommits } from "./git-log.js";
+import { NON_CORE_IMPORTANCE, rankDanger, WINDOW_DAYS } from "./danger.js";
 import { CONFIG_FILE, createIgnore, DEFAULT_IGNORE, loadConfig } from "./ignore.js";
 import { DEFAULT_PARAMS, scoreFiles, type ScoreParams } from "./score.js";
-import { aggregate, fileHistories } from "./stats.js";
+import { aggregate, fileHistories, type Change } from "./stats.js";
 
 const USAGE = `usage:
   npm run cli -- hello
   npm run cli -- lines <repo-path>                 由来別の変更行数（Phase 1）
   npm run cli -- score <repo-path> [options]       理解スコアの低い順（Phase 2）
+  npm run cli -- danger <repo-path> [options]      危険地帯の上位10件（Phase 4）
   npm run cli -- ack <repo-path> <path>...         読んで理解したファイル／ディレクトリを記録する
 
-options (score):
+options (score, danger):
   --lambda <n>   AI の変更が理解を下げる強さ（既定 ${DEFAULT_PARAMS.lambda}）
   --pair <n>     併走の変更を自律の何倍で効かせるか、0〜1（既定 ${DEFAULT_PARAMS.pairWeight}）`;
 
@@ -34,7 +36,7 @@ switch (command) {
 
   case "lines": {
     const { repoPath } = parseArgs(args);
-    const histories = load(repoPath);
+    const { histories } = load(repoPath);
     const stats = aggregate(histories);
     stats.sort((a, b) => b.lines.autonomous - a.lines.autonomous || b.lines.pair - a.lines.pair);
     printTable(
@@ -46,11 +48,8 @@ switch (command) {
 
   case "score": {
     const { repoPath, params } = parseArgs(args);
-    const histories = load(repoPath);
-    const acks = orFail(() => readAcks(repoPath));
-    console.log(`acks: ${acks.length} 件（${ACKS_FILE}）`);
-    console.log(`params: lambda=${params.lambda} pair=${params.pairWeight}\n`);
-    const scores = scoreFiles(histories, acks, params);
+    const { histories } = load(repoPath);
+    const scores = loadScores(repoPath, histories, params);
     scores.sort((a, b) => a.score - b.score || b.size - a.size);
     printTable(
       ["score", "行数", "自律", "併走", "人間", "最後の理解", "path"],
@@ -61,6 +60,35 @@ switch (command) {
         String(r.lines.pair),
         String(r.lines.human),
         r.lastUnderstoodDate?.slice(0, 10) ?? "-",
+        r.path,
+      ]),
+    );
+    break;
+  }
+
+  case "danger": {
+    const { repoPath, params } = parseArgs(args);
+    const { histories, config } = load(repoPath);
+    const scores = loadScores(repoPath, histories, params);
+    if (config.core.length === 0) {
+      console.log(`注意: ${CONFIG_FILE} に core: がないので、すべてのファイルを重要度 1 として扱います\n`);
+    }
+    const rows = rankDanger(scores, histories, config.core, new Date())
+      .filter((r) => r.danger > 0)
+      .sort((a, b) => b.danger - a.danger)
+      .slice(0, 10);
+    if (rows.length === 0) {
+      console.log(`直近${WINDOW_DAYS}日に変更されたファイルがないか、すべて理解済みです`);
+      break;
+    }
+    console.log(`危険度 = 重要度（core 1 / それ以外 ${NON_CORE_IMPORTANCE}）× (1 − score) × 変更頻度（直近${WINDOW_DAYS}日）\n`);
+    printTable(
+      ["危険度", "score", "core", `${WINDOW_DAYS}日`, "path"],
+      rows.map((r) => [
+        r.danger.toFixed(2),
+        r.score.toFixed(2),
+        r.core === undefined ? "-" : r.core ? "yes" : "no",
+        String(r.recentChanges),
         r.path,
       ]),
     );
@@ -159,7 +187,14 @@ function load(repoPath: string) {
   const files = [...listFiles(repoPath)];
   const kept = files.filter((f) => !isIgnored(f));
   console.log(`除外: ${files.length - kept.length} ファイル（既定のパターン + ${CONFIG_FILE} の ignore:）\n`);
-  return fileHistories(commits, new Set(kept));
+  return { histories: fileHistories(commits, new Set(kept)), config };
+}
+
+function loadScores(repoPath: string, histories: Map<string, Change[]>, params: ScoreParams) {
+  const acks = orFail(() => readAcks(repoPath));
+  console.log(`acks: ${acks.length} 件（${ACKS_FILE}）`);
+  console.log(`params: lambda=${params.lambda} pair=${params.pairWeight}\n`);
+  return scoreFiles(histories, acks, params);
 }
 
 // 設定ファイルなどの読み込みエラーを、使い方つきのエラー表示にする
