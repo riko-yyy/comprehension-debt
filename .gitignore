@@ -1,5 +1,5 @@
 node_modules/
 out/
 
-# 理解の記録は手元だけに置く（ADR 0013）
+# 理解の記録は公開せず、手元だけに置く
 docs/understanding-log.md
