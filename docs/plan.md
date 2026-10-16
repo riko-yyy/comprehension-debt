@@ -44,7 +44,7 @@
 ### Phase 5
 - `npm run cli -- report <path>` で `out/report.json` と `out/index.html`。形と見せ方は ADR 0012
 - ファイル数が500を超えたら、ディレクトリのズームを足す（ADR 0012）
-- JSON には、explainer に渡す材料（最後に理解した日時と、それ以降の変更）も含める（ADR 0010）
+- JSON には、理解するための材料（最後に理解した日時と、それ以降の変更）も含める（ADR 0013）
 - 結果を JSON に出力し、D3 などを CDN から読み込んでツリーマップを描く
 
 ### Phase 6
