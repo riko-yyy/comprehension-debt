@@ -3,6 +3,8 @@ import type { Commit } from "./git-log.js";
 
 // 1つのファイルに対する1回の変更
 export type Change = {
+  // コミットのハッシュ。git show <commit> -- <path> で、そのときの差分を取り出せる
+  commit: string;
   date: string;
   origin: Origin;
   added: number;
@@ -33,7 +35,7 @@ export function fileHistories(commits: Commit[], currentFiles: Set<string>): Map
       if (file.binary || !currentFiles.has(path)) continue;
 
       const list = histories.get(path) ?? [];
-      list.push({ date: commit.date, origin, added: file.added, deleted: file.deleted });
+      list.push({ commit: commit.hash, date: commit.date, origin, added: file.added, deleted: file.deleted });
       histories.set(path, list);
     }
   }

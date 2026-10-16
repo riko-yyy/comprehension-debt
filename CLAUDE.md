@@ -6,7 +6,7 @@ git 履歴と PR レビューから、ファイル／ディレクトリ単位の
 
 ## コマンド
 
-- 実行: `npm run cli -- <サブコマンド>`（例: `npm run cli -- score ../design-doc-repo`、`lines` は由来別の変更行数、`danger` は危険地帯の上位10件、`ack` は読んで理解したことの記録）
+- 実行: `npm run cli -- <サブコマンド>`（例: `npm run cli -- score ../design-doc-repo`、`lines` は由来別の変更行数、`danger` は危険地帯の上位10件、`report` は JSON とツリーマップの HTML、`ack` は読んで理解したことの記録）
 - 型チェック: `npm run typecheck`（tsx は型チェックしないので、変更後は必ず実行する）
 
 ## 進め方
@@ -31,6 +31,6 @@ git 履歴と PR レビューから、ファイル／ディレクトリ単位の
 ## 次にやること
 
 1. Phase 2・4 のクイズは済み（`docs/understanding-log.md`）
-2. Phase 5（可視化）の設計を示して承認をもらう。JSON には explainer に渡す材料（最後に理解した日時と、それ以降の変更）も含める（ADR 0010）
+2. Phase 5（可視化）は実装済み（ADR 0012、提案）。人間が `out/index.html` を開いて確認したら完了。その後 Phase 6 の設計を示す
 3. λ=1、併走倍率=0.5 は暫定（ADR 0011）。Phase 6 で毎日スコアを眺められるようになったら、上位10件の並び順を見直す
 4. Phase 3（PR レビュー）は後回し

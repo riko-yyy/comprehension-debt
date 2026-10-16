@@ -19,6 +19,12 @@ npm run cli -- lines ../target-repo
 # 理解スコアの低い順に並べる
 npm run cli -- score ../target-repo
 
+# 危険地帯（重要 × 理解していない × よく変わる）の上位10件
+npm run cli -- danger ../target-repo
+
+# ツリーマップの HTML と JSON を out/ に書き出す（out/index.html をブラウザで開く）
+npm run cli -- report ../target-repo
+
 # 読んで理解したファイル／ディレクトリを記録する（スコアが満点に戻る）
 npm run cli -- ack ../target-repo src/App.tsx src/components/
 ```
@@ -60,6 +66,8 @@ AI が単独で新しく作ったファイルは 0.37、併走で作ったファ
 対象リポジトリのルートに置く。なくても動く。
 
 ```yaml
+core:
+  - src/domain/        # 重要なパス。危険度の重要度が 1 になる（それ以外は 0.3）
 ignore:
   - "*.generated.ts"   # スコアから外す
   - "!docs/*.svg"      # 既定の除外を取り消す
@@ -82,8 +90,8 @@ lock ファイル、`*.min.js` などの自動生成ファイル、`*.svg` は�
 | 1 | git 履歴の読み取りと由来の判定 | 完了 |
 | 2 | 理解スコアの計算 | 完了 |
 | 3 | PR レビューを理解イベントにする | 後回し（一人開発ではレビューが起きないため、代わりに `ack` を作った） |
-| 4 | 重要パスと危険地帯 | 次にやる |
-| 5 | ツリーマップで可視化 | |
+| 4 | 重要パスと危険地帯 | 完了 |
+| 5 | ツリーマップで可視化 | 確認待ち |
 | 6 | 定期実行で自動更新 | |
 
 ## ドキュメント
