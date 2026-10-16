@@ -6,38 +6,69 @@ AI がコードを書くほど、人間が「把握しているつもり」の�
 長期的には、事業・組織・システムの形が揃っているかを見るヘルスチェックを目指している（[docs/vision.md](docs/vision.md)）。
 今はその入口として、自分のリポジトリを対象にした段階1を作っている。
 
-## 使い方
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/report-dark.png">
+  <img alt="tekito-uranai の理解スコアのツリーマップ。面積は行数、色は理解スコア（赤：理解していない、青：理解している）。右に危険地帯の上位10件" src="docs/images/report-light.png">
+</picture>
 
-Node.js 20 以上が必要。
+四角の面積がファイルの行数、色が理解スコア（赤：理解していない 〜 青：理解している）。右は危険地帯の上位10件。
+
+## 使う流れ
+
+Node.js 20 以上が必要。分析したいリポジトリを手元に clone しておく。
 
 ```bash
 npm install
+```
+
+### 1. どこを理解していないかを見つける
+
+```bash
+# 危険地帯（重要 × 理解していない × よく変わる）の上位10件
+npm run cli -- danger ../my-repo
+```
+
+```
+危険度  score  core  90日  path
+  0.79   0.21     -    10  src/App.css
+  0.60   0.19     -     5  src/App.tsx
+  0.60   0.27     -     6  src/components/TodayScreen.tsx
+  0.57   0.30     -     6  src/components/FavoritesScreen.tsx
+  ...
+```
+
+全体を見たいときは、上の画像のレポートを書き出す。
+
+```bash
+npm run cli -- report ../my-repo   # out/index.html をブラウザで開く
+```
+
+レポートでファイルをクリックすると、最後に理解してから入った変更の一覧と、その差分を取り出す `git show` のコマンドが出る。
+
+### 2. 理解する
+
+読む、説明を書いてもらう、人に聞く、自分で書き直す。方法は自由（[ADR 0013](docs/adr/0013-leave-understanding-method-to-user.md)）。
+
+### 3. 理解したら記録する
+
+```bash
+npm run cli -- ack ../my-repo src/App.tsx src/components/
+```
+
+対象リポジトリの `.understanding/acks.jsonl` に記録され、スコアが満点に戻る。この記録は対象リポジトリでコミットしておく。
+その後に AI がファイルを変更すると、スコアはまた下がっていく。
+
+### ほかのコマンド
+
+```bash
+# 理解スコアの低い順に全ファイル
+npm run cli -- score ../my-repo
 
 # ファイルごとに、誰が何行変更したか（自律／併走／人間）
-npm run cli -- lines ../target-repo
-
-# 理解スコアの低い順に並べる
-npm run cli -- score ../target-repo
-
-# 危険地帯（重要 × 理解していない × よく変わる）の上位10件
-npm run cli -- danger ../target-repo
-
-# ツリーマップの HTML と JSON を out/ に書き出す（out/index.html をブラウザで開く）
-npm run cli -- report ../target-repo
-
-# 読んで理解したファイル／ディレクトリを記録する（スコアが満点に戻る）
-npm run cli -- ack ../target-repo src/App.tsx src/components/
+npm run cli -- lines ../my-repo
 ```
 
-`score` の出力例:
-
-```
-score  行数  自律  併走  人間  最後の理解  path
- 0.37    20    20     0     0           -  docs/release-procedures/2026-09-05-hello-world-pipeline-test-5.md
- 0.53    44     0    52     0           -  .github/workflows/design-doc-pipeline.yml
- 0.60    85     0    86     1  2026-09-05  README.md
- 1.00    21     0     0    21  2026-09-05  LICENSE
-```
+`score`・`danger`・`report` は `--lambda <n>`（AI の変更が理解を下げる強さ、既定 1）と `--pair <n>`（併走の効き方、既定 0.5）で調整できる。
 
 ## 仕組み
 
@@ -93,6 +124,16 @@ lock ファイル、`*.min.js` などの自動生成ファイル、`*.svg` は�
 | 4 | 重要パスと危険地帯 | 完了 |
 | 5 | ツリーマップで可視化 | 完了 |
 | 6 | 定期実行で自動更新 | 次にやる |
+
+## README の画像を撮り直す
+
+```bash
+npm run screenshots   # docs/images/report-{light,dark}.png（Chrome を画面なしで動かして撮る）
+```
+
+## ライセンス
+
+[MIT](LICENSE)
 
 ## ドキュメント
 

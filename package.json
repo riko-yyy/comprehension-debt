@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "cli": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "screenshots": "scripts/screenshots.sh"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
