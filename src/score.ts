@@ -21,6 +21,8 @@ export type FileScore = {
   commits: number;
   // 最後に理解した日時。人間の変更か ack の新しいほう
   lastUnderstoodDate?: string;
+  // 最後に理解した時点より後の変更（一度も理解していなければ全部）。explainer に渡す材料（ADR 0010）
+  changesSinceUnderstood: Change[];
   lastDate: string;
 };
 
@@ -36,6 +38,8 @@ export function scoreFile(path: string, changes: Change[], acks: Ack[], params: 
   let understood = 1;
   let size = 0;
   let lastUnderstoodDate: string | undefined;
+  // 最後に理解した時点より後の変更を貯める。理解イベントのたびに空にする
+  let sinceUnderstood: Change[] = [];
 
   // ack を日時の順に、その日時より後の変更の手前で差し込む
   const pending = [...acks].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
@@ -43,6 +47,7 @@ export function scoreFile(path: string, changes: Change[], acks: Ack[], params: 
     while (pending.length > 0 && Date.parse(pending[0].date) <= date) {
       understood = 1;
       lastUnderstoodDate = pending.shift()!.date;
+      sinceUnderstood = [];
     }
   };
 
@@ -57,8 +62,10 @@ export function scoreFile(path: string, changes: Change[], acks: Ack[], params: 
     if (c.origin === "human") {
       understood += (1 - understood) * Math.min(1, ratio);
       lastUnderstoodDate = c.date;
+      sinceUnderstood = [];
     } else {
       understood *= Math.exp(-params.lambda * weight[c.origin] * ratio);
+      sinceUnderstood.push(c);
     }
     lines[c.origin] += touched;
   }
@@ -71,6 +78,7 @@ export function scoreFile(path: string, changes: Change[], acks: Ack[], params: 
     lines,
     commits: changes.length,
     lastUnderstoodDate,
+    changesSinceUnderstood: sinceUnderstood,
     lastDate: changes.at(-1)?.date ?? "",
   };
 }

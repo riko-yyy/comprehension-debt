@@ -1,11 +1,13 @@
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { basename, relative, resolve } from "node:path";
 import { ACKS_FILE, appendAcks, normalizeAckPath, readAcks, type Ack } from "./acks.js";
 import { classify, type Origin } from "./classify.js";
 import { listFiles, readCommits } from "./git-log.js";
 import { NON_CORE_IMPORTANCE, rankDanger, WINDOW_DAYS } from "./danger.js";
 import { CONFIG_FILE, createIgnore, DEFAULT_IGNORE, loadConfig } from "./ignore.js";
+import { buildReport, renderHtml } from "./report.js";
 import { DEFAULT_PARAMS, scoreFiles, type ScoreParams } from "./score.js";
 import { aggregate, fileHistories, type Change } from "./stats.js";
 
@@ -14,11 +16,14 @@ const USAGE = `usage:
   npm run cli -- lines <repo-path>                 由来別の変更行数（Phase 1）
   npm run cli -- score <repo-path> [options]       理解スコアの低い順（Phase 2）
   npm run cli -- danger <repo-path> [options]      危険地帯の上位10件（Phase 4）
+  npm run cli -- report <repo-path> [options]      JSON とツリーマップの HTML を書き出す（Phase 5）
   npm run cli -- ack <repo-path> <path>...         読んで理解したファイル／ディレクトリを記録する
 
-options (score, danger):
+options (score, danger, report):
   --lambda <n>   AI の変更が理解を下げる強さ（既定 ${DEFAULT_PARAMS.lambda}）
-  --pair <n>     併走の変更を自律の何倍で効かせるか、0〜1（既定 ${DEFAULT_PARAMS.pairWeight}）`;
+  --pair <n>     併走の変更を自律の何倍で効かせるか、0〜1（既定 ${DEFAULT_PARAMS.pairWeight}）
+options (report):
+  --out <dir>    書き出す先（既定 out）`;
 
 // `| head` のように読み手が途中で閉じたら、エラーにせず静かに終わる
 process.stdout.on("error", (e: NodeJS.ErrnoException) => {
@@ -95,6 +100,24 @@ switch (command) {
     break;
   }
 
+  case "report": {
+    const { repoPath, params, outDir } = parseArgs(args);
+    const { histories, config } = load(repoPath);
+    const scores = loadScores(repoPath, histories, params);
+    const dangers = rankDanger(scores, histories, config.core, new Date());
+    const report = buildReport(basename(repoPath), params, scores, dangers);
+
+    mkdirSync(outDir, { recursive: true });
+    const jsonPath = resolve(outDir, "report.json");
+    const htmlPath = resolve(outDir, "index.html");
+    writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
+    writeFileSync(htmlPath, renderHtml(report));
+    console.log(`${report.files.length} ファイルを書き出しました`);
+    console.log(`  ${relative(process.cwd(), jsonPath)}`);
+    console.log(`  ${relative(process.cwd(), htmlPath)}（ブラウザで開く）`);
+    break;
+  }
+
   case "ack": {
     const [target, ...rawPaths] = args;
     const repoPath = repoPathOrFail(target);
@@ -123,12 +146,15 @@ switch (command) {
 }
 
 // "--lambda 2" のような「名前 値」の組を読む。名前のない最初の引数をリポジトリのパスとみなす
-function parseArgs(args: string[]): { repoPath: string; params: ScoreParams } {
+function parseArgs(args: string[]): { repoPath: string; params: ScoreParams; outDir: string } {
   const params = { ...DEFAULT_PARAMS };
   let target: string | undefined;
+  let outDir = "out";
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--lambda" || arg === "--pair") {
+    if (arg === "--out") {
+      outDir = args[++i] ?? fail("--out には書き出す先のディレクトリが必要です");
+    } else if (arg === "--lambda" || arg === "--pair") {
       const value = Number(args[++i]);
       if (!Number.isFinite(value) || value < 0) fail(`${arg} には 0 以上の数値が必要です`);
       if (arg === "--lambda") params.lambda = value;
@@ -139,7 +165,7 @@ function parseArgs(args: string[]): { repoPath: string; params: ScoreParams } {
       target = arg;
     }
   }
-  return { repoPath: repoPathOrFail(target), params };
+  return { repoPath: repoPathOrFail(target), params, outDir: resolve(outDir) };
 }
 
 function repoPathOrFail(target: string | undefined): string {
