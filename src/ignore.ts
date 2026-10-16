@@ -37,19 +37,25 @@ export const CONFIG_FILE = "understanding.yml";
 
 export type Config = {
   ignore: string[];
+  // 重要なパス（ADR 0011）。書き方は ignore: と同じ
+  core: string[];
 };
 
 // 対象リポジトリの understanding.yml を読む。なければ空の設定
 export function loadConfig(repoPath: string): Config {
   const file = resolve(repoPath, CONFIG_FILE);
-  if (!existsSync(file)) return { ignore: [] };
+  if (!existsSync(file)) return { ignore: [], core: [] };
 
-  const raw: unknown = parse(readFileSync(file, "utf8")) ?? {};
-  const ignore = (raw as { ignore?: unknown }).ignore ?? [];
-  if (!Array.isArray(ignore) || !ignore.every((p) => typeof p === "string")) {
-    throw new Error(`${CONFIG_FILE} の ignore: は文字列のリストにしてください`);
+  const raw = (parse(readFileSync(file, "utf8")) ?? {}) as Record<string, unknown>;
+  return { ignore: patternList(raw, "ignore"), core: patternList(raw, "core") };
+}
+
+function patternList(raw: Record<string, unknown>, key: string): string[] {
+  const value = raw[key] ?? [];
+  if (!Array.isArray(value) || !value.every((p) => typeof p === "string")) {
+    throw new Error(`${CONFIG_FILE} の ${key}: は文字列のリストにしてください`);
   }
-  return { ignore };
+  return value;
 }
 
 // .gitignore と同じように、パターンを上から順に当てて最後に一致したものが勝つ。
