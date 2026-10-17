@@ -2,11 +2,9 @@
 # 有効にするには Settings → Pages の Source を「GitHub Actions」にする
 name: report
 
+# 今は手動実行だけ。Actions の画面の「Run workflow」で動かす（ADR 0014）
 on:
-  schedule:
-    # GitHub の cron は UTC。21:00 UTC = 毎朝6時（JST）。混んでいると遅れることがある
-    - cron: "0 21 * * *"
-  workflow_dispatch: # Actions の画面から手動で動かせるようにする
+  workflow_dispatch:
 
 permissions:
   contents: read

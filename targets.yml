@@ -1,14 +1,7 @@
-# 毎朝レポートを作って公開する対象（ADR 0014）。公開リポジトリだけを並べる
+# レポートを作って公開する対象（ADR 0014）。公開リポジトリだけを並べる
 #   name: 公開先のディレクトリ名（site/<name>/）
 #   repo: GitHub の owner/name
+# まずはこのリポジトリだけで様子を見る
 targets:
   - name: comprehension-debt
     repo: riko-yyy/comprehension-debt
-  - name: tekito-uranai
-    repo: riko-yyy/tekito-uranai
-  - name: aws-dotnet-lab
-    repo: riko-yyy/aws-dotnet-lab
-  - name: ddd-dojo
-    repo: riko-yyy/ddd-dojo
-  - name: design-doc-repo
-    repo: riko-yyy/design-doc-repo

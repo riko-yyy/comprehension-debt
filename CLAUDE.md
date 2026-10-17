@@ -9,7 +9,7 @@ git 履歴と PR レビューから、ファイル／ディレクトリ単位の
 ## コマンド
 
 - 実行: `npm run cli -- <サブコマンド>`（例: `npm run cli -- score ../my-repo`、`lines` は由来別の変更行数、`danger` は危険地帯の上位10件、`report` は JSON とツリーマップの HTML、`ack` は読んで理解したことの記録）
-- 公開用のサイト: `npm run site`（`targets.yml` の対象を clone してレポートを作り、一覧ページと一緒に `site/` に書き出す。毎朝 GitHub Actions が同じものを動かして Pages に公開する）
+- 公開用のサイト: `npm run site`（`targets.yml` の対象を clone してレポートを作り、一覧ページと一緒に `site/` に書き出す。GitHub Actions を手動で実行すると、同じものを動かして Pages に公開する）
 - 型チェック: `npm run typecheck`（tsx は型チェックしないので、変更後は必ず実行する）
 
 ## 進め方

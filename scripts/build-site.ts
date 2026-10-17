@@ -95,7 +95,7 @@ function renderIndex(items: { target: Target; report: Report }[]): string {
 <body>
 <main>
 <h1>理解スコアの一覧</h1>
-<p>毎朝6時（JST）に作り直す。危険度 = 重要度 × (1 − 理解スコア) × 変更頻度。更新: ${escapeHtml(generatedAt)}</p>
+<p>危険度 = 重要度 × (1 − 理解スコア) × 変更頻度。更新: ${escapeHtml(generatedAt)}</p>
 <div class="scroll">
 <table>
 <thead><tr><th>リポジトリ</th><th class="num">ファイル数</th><th>危険度の1位</th><th>GitHub</th></tr></thead>

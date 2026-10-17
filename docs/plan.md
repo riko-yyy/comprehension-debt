@@ -48,7 +48,7 @@
 - 結果を JSON に出力し、D3 などを CDN から読み込んでツリーマップを描く
 
 ### Phase 6
-- 毎朝6時（JST）に GitHub Actions で `npm run site` を動かし、GitHub Pages に公開する（ADR 0014）。対象は `targets.yml` の公開リポジトリ。全履歴は `actions/checkout` ではなく `git clone` で取る
+- GitHub Actions で `npm run site` を動かし、GitHub Pages に公開する（ADR 0014）。まずは手動実行だけ、対象はこのリポジトリだけで様子を見る。対象は `targets.yml` に並べる。全履歴は `actions/checkout` ではなく `git clone` で取る
 - `actions/checkout` は既定で最新1コミットしか取得しない。必ず `fetch-depth: 0`（全履歴）にする。行数を履歴の積み上げで推定しているため（ADR 0007）、履歴が欠けると行数もスコアも黙ってずれる
 - 対象リポジトリを clone して分析し、結果を公開する。private を対象にするなら読み取り用トークンを Secrets に登録
 - 注意: private リポジトリの Pages 公開は有料プランが必要。公開ページには対象リポジトリのファイルパスと「理解できていない場所」が載る。公開先はここで決める（決めたら ADR）
