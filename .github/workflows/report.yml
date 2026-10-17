@@ -1,0 +1,43 @@
+# targets.yml の対象のレポートを作り、GitHub Pages に公開する（ADR 0014）
+# 有効にするには Settings → Pages の Source を「GitHub Actions」にする
+name: report
+
+# 今は手動実行だけ。Actions の画面の「Run workflow」で動かす（ADR 0014）
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 公開が重ならないようにする。途中の公開は取り消さない
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # このリポジトリ（ツール本体）を取る。対象は build-site.ts が全履歴つきで clone する
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
