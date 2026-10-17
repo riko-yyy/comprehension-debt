@@ -1,0 +1,3 @@
+# comprehension-debt 自身を分析するときの設定（README の「対象リポジトリでの設定」）
+core:
+  - src/   # ツールの本体。ここを理解しておきたい
