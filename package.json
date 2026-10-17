@@ -6,7 +6,8 @@
   "scripts": {
     "cli": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "screenshots": "scripts/screenshots.sh"
+    "screenshots": "scripts/screenshots.sh",
+    "site": "tsx scripts/build-site.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

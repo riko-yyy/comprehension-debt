@@ -1,5 +1,6 @@
 node_modules/
 out/
+site/
 
 # 理解の記録は公開せず、手元だけに置く
 docs/understanding-log.md
